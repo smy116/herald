@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}消息日志{% endblock %}
+
+{% block content %}
+<div x-data="logsPage()" x-cloak>
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold"><i class="ri-file-list-3-line"></i> 消息日志</h1>
+        <button class="btn btn-error btn-sm" @click="showClearModal = true">
+            <i class="ri-delete-bin-line"></i> 清空日志
+        </button>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            {% if logs %}
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>标题</th>
+                            <th>正文</th>
+                            <th>渠道</th>
+                            <th>来源</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="whitespace-nowrap text-xs opacity-60">{{ log.created_at.strftime('%m-%d
+                                %H:%M:%S') }}</td>
+                            <td class="max-w-[160px] truncate font-medium" title="{{ log.title }}">{{ log.title }}</td>
+                            <td class="max-w-[200px] truncate text-xs opacity-70" title="{{ log.body }}">{{ log.body or
+                                '—' }}</td>
+                            <td><span class="badge badge-ghost badge-sm">{{ log.channel_name }}</span></td>
+                            <td class="text-xs opacity-60">{{ log.api_key_name or '—' }}</td>
+                            <td>
+                                {% if log.status == 'success' %}
+                                <span class="badge badge-success badge-sm gap-1"><i class="ri-check-line"></i> 成功</span>
+                                {% elif log.status == 'failed' %}
+                                <span class="badge badge-error badge-sm gap-1 cursor-help" title="{{ log.error_msg }}">
+                                    <i class="ri-close-line"></i> 失败
+                                </span>
+                                {% else %}
+                                <span class="badge badge-warning badge-sm">发送中</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.status == 'failed' %}
+                                <button class="btn btn-ghost btn-xs text-info" title="重试" @click="retry({{ log.id }})">
+                                    <i class="ri-refresh-line"></i> 重试
+                                </button>
+                                {% else %}
+                                <span class="text-xs opacity-40">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <div class="flex justify-center mt-4">
+                <div class="join">
+                    {% if page > 1 %}
+                    <a href="/logs?page={{ page - 1 }}" class="join-item btn btn-sm">«</a>
+                    {% endif %}
+
+                    {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                    <button class="join-item btn btn-sm btn-active">{{ p }}</button>
+                    {% elif p <= 3 or p> total_pages - 2 or (p >= page - 1 and p <= page + 1) %} <a
+                            href="/logs?page={{ p }}" class="join-item btn btn-sm">{{ p }}</a>
+                            {% elif p == 4 or p == total_pages - 2 %}
+                            <button class="join-item btn btn-sm btn-disabled">…</button>
+                            {% endif %}
+                            {% endfor %}
+
+                            {% if page < total_pages %} <a href="/logs?page={{ page + 1 }}"
+                                class="join-item btn btn-sm">»</a>
+                                {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-8 text-base-content/40">
+                <i class="ri-inbox-line text-4xl block mb-2"></i>
+                <p>暂无日志记录</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Clear Logs Confirm Modal -->
+    <dialog class="modal" :class="{ 'modal-open': showClearModal }">
+        <div class="modal-box max-w-sm">
+            <h3 class="text-lg font-bold text-error mb-2"><i class="ri-error-warning-line"></i> 确认清空</h3>
+            <p class="py-2">确定要清空所有日志吗？此操作不可撤销。</p>
+            <div class="modal-action">
+                <button class="btn btn-sm" @click="showClearModal = false">取消</button>
+                <button class="btn btn-error btn-sm" @click="doClear()">
+                    <i class="ri-delete-bin-line"></i> 清空
+                </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop" @click="showClearModal = false"></form>
+    </dialog>
+</div>
+
+<script>
+    function logsPage() {
+        return {
+            showClearModal: false,
+
+            async doClear() {
+                try {
+                    await Alpine.store('api').call('clear_logs');
+                    this.showClearModal = false;
+                    setTimeout(() => window.location.reload(), 500);
+                } catch (e) { }
+            },
+
+            async retry(logId) {
+                try {
+                    await Alpine.store('api').call('retry_msg', { log_id: logId });
+                    setTimeout(() => window.location.reload(), 500);
+                } catch (e) { }
+            },
+        };
+    }
+</script>
+{% endblock %}

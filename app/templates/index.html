@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}概览{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6"><i class="ri-dashboard-3-line"></i> 概览</h1>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="stat bg-base-100 rounded-box shadow">
+        <div class="stat-figure text-primary"><i class="ri-route-line text-3xl"></i></div>
+        <div class="stat-title">渠道</div>
+        <div class="stat-value text-primary">{{ stats.total_channels }}</div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+        <div class="stat-figure text-secondary"><i class="ri-key-2-line text-3xl"></i></div>
+        <div class="stat-title">活跃密钥</div>
+        <div class="stat-value text-secondary">{{ stats.total_keys }}</div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+        <div class="stat-figure text-accent"><i class="ri-mail-send-line text-3xl"></i></div>
+        <div class="stat-title">今日消息</div>
+        <div class="stat-value text-accent">{{ stats.today_msgs }}</div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+        <div class="stat-figure text-error"><i class="ri-error-warning-line text-3xl"></i></div>
+        <div class="stat-title">今日失败</div>
+        <div class="stat-value text-error">{{ stats.today_failed }}</div>
+    </div>
+</div>
+
+<!-- Recent Logs -->
+<div class="card bg-base-100 shadow">
+    <div class="card-body">
+        <h2 class="card-title text-lg"><i class="ri-time-line"></i> 最近消息</h2>
+        {% if recent_logs %}
+        <div class="overflow-x-auto">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>标题</th>
+                        <th>渠道</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td class="whitespace-nowrap text-xs opacity-60">{{ log.created_at.strftime('%m-%d %H:%M') }}
+                        </td>
+                        <td class="max-w-xs truncate">{{ log.title }}</td>
+                        <td><span class="badge badge-ghost badge-sm">{{ log.channel_name }}</span></td>
+                        <td>
+                            {% if log.status == 'success' %}
+                            <span class="badge badge-success badge-sm gap-1"><i class="ri-check-line"></i> 成功</span>
+                            {% elif log.status == 'failed' %}
+                            <span class="badge badge-error badge-sm gap-1" title="{{ log.error_msg }}"><i
+                                    class="ri-close-line"></i> 失败</span>
+                            {% else %}
+                            <span class="badge badge-warning badge-sm gap-1"><i class="ri-loader-4-line"></i> 发送中</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-base-content/40">
+            <i class="ri-inbox-line text-4xl block mb-2"></i>
+            <p>暂无消息记录</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

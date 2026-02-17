@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}密钥管理{% endblock %}
+
+{% block content %}
+<div x-data="keysPage()" x-cloak>
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold"><i class="ri-key-2-line"></i> 密钥管理</h1>
+        <button class="btn btn-primary btn-sm" @click="openCreate()">
+            <i class="ri-add-line"></i> 新建密钥
+        </button>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            {% if keys %}
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>Key</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for k in keys %}
+                        <tr>
+                            <td class="font-medium">{{ k.name }}</td>
+                            <td>
+                                <code class="text-xs bg-base-200 px-2 py-1 rounded select-all">{{ k.key }}</code>
+                            </td>
+                            <td class="text-xs opacity-60 whitespace-nowrap">{{ k.created_at.strftime('%Y-%m-%d %H:%M')
+                                }}</td>
+                            <td>
+                                <button class="btn btn-ghost btn-xs text-error" title="删除"
+                                    @click="confirmDelete({{ k.id }}, '{{ k.name }}')">
+                                    <i class="ri-delete-bin-line"></i> 删除
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-base-content/40">
+                <i class="ri-key-2-line text-4xl block mb-2"></i>
+                <p>暂无密钥，点击右上角按钮创建</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Create Key Modal -->
+    <dialog class="modal" :class="{ 'modal-open': showCreate }">
+        <div class="modal-box max-w-sm">
+            <h3 class="text-lg font-bold mb-4">新建 API Key</h3>
+            <div class="form-control mb-4">
+                <label class="label"><span class="label-text">名称</span></label>
+                <input type="text" x-model="newName" class="input input-bordered input-sm w-full"
+                    placeholder="如: production" />
+            </div>
+
+            <template x-if="createdKey">
+                <div class="alert alert-success text-sm mb-4">
+                    <div>
+                        <p class="font-bold">密钥已创建，请妥善保存：</p>
+                        <code class="select-all break-all" x-text="createdKey"></code>
+                    </div>
+                </div>
+            </template>
+
+            <div class="modal-action">
+                <button class="btn btn-sm" @click="closeCreate()">关闭</button>
+                <template x-if="!createdKey">
+                    <button class="btn btn-primary btn-sm" @click="create()">
+                        <i class="ri-add-line"></i> 创建
+                    </button>
+                </template>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop" @click="closeCreate()"></form>
+    </dialog>
+
+    <!-- Delete Confirm Modal -->
+    <dialog class="modal" :class="{ 'modal-open': showDeleteModal }">
+        <div class="modal-box max-w-sm">
+            <h3 class="text-lg font-bold text-error mb-2"><i class="ri-error-warning-line"></i> 确认删除</h3>
+            <p class="py-2">确定要删除密钥「<span class="font-bold" x-text="deleteName"></span>」吗？删除后使用该密钥的调用将立即失效。</p>
+            <div class="modal-action">
+                <button class="btn btn-sm" @click="showDeleteModal = false">取消</button>
+                <button class="btn btn-error btn-sm" @click="doDelete()">
+                    <i class="ri-delete-bin-line"></i> 删除
+                </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop" @click="showDeleteModal = false"></form>
+    </dialog>
+</div>
+
+<script>
+    function keysPage() {
+        return {
+            showCreate: false,
+            showDeleteModal: false,
+            newName: '',
+            createdKey: '',
+            deleteId: null,
+            deleteName: '',
+
+            openCreate() {
+                this.newName = '';
+                this.createdKey = '';
+                this.showCreate = true;
+            },
+
+            closeCreate() {
+                this.showCreate = false;
+                if (this.createdKey) window.location.reload();
+            },
+
+            async create() {
+                if (!this.newName.trim()) { showToast('error', '请输入名称'); return; }
+                try {
+                    const data = await Alpine.store('api').call('create_key', { name: this.newName.trim() });
+                    this.createdKey = data.data?.key || '';
+                } catch (e) { }
+            },
+
+            confirmDelete(id, name) {
+                this.deleteId = id;
+                this.deleteName = name;
+                this.showDeleteModal = true;
+            },
+
+            async doDelete() {
+                try {
+                    await Alpine.store('api').call('delete_key', { id: this.deleteId });
+                    this.showDeleteModal = false;
+                    setTimeout(() => window.location.reload(), 500);
+                } catch (e) { }
+            },
+        };
+    }
+</script>
+{% endblock %}

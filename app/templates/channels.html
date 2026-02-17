@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block title %}渠道管理{% endblock %}
+
+{% block content %}
+<div x-data="channelPage()" x-cloak>
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold"><i class="ri-route-line"></i> 渠道管理</h1>
+        <button class="btn btn-primary btn-sm" @click="openCreate()">
+            <i class="ri-add-line"></i> 新建渠道
+        </button>
+    </div>
+
+    <!-- Channel Table -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            {% if channels %}
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>类型</th>
+                            <th>目标</th>
+                            <th>默认</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ch in channels %}
+                        <tr>
+                            <td class="font-medium">{{ ch.name }}</td>
+                            <td>
+                                {% if ch.type == 'webhook' %}
+                                <span class="badge badge-info badge-sm gap-1"><i class="ri-webhook-line"></i>
+                                    Webhook</span>
+                                {% elif ch.type == 'telegram' %}
+                                <span class="badge badge-primary badge-sm gap-1"><i class="ri-telegram-line"></i>
+                                    Telegram</span>
+                                {% elif ch.type == 'email' %}
+                                <span class="badge badge-secondary badge-sm gap-1"><i class="ri-mail-line"></i>
+                                    Email</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-xs opacity-70 max-w-[200px] truncate">
+                                {% if ch.type == 'webhook' %}{{ ch._config_dict.get('url', '-') }}
+                                {% elif ch.type == 'telegram' %}Chat: {{ ch._config_dict.get('chat_id', '-') }}
+                                {% elif ch.type == 'email' %}{{ ch._config_dict.get('to', '-') }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ch.is_default %}
+                                <span class="badge badge-accent badge-sm">默认</span>
+                                {% else %}
+                                <span class="text-xs opacity-40">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ch.enabled %}
+                                <span class="badge badge-success badge-sm gap-1"><i class="ri-checkbox-circle-line"></i>
+                                    启用</span>
+                                {% else %}
+                                <span class="badge badge-ghost badge-sm gap-1"><i class="ri-forbid-line"></i> 禁用</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-xs opacity-60 whitespace-nowrap">{{ ch.created_at.strftime('%Y-%m-%d %H:%M')
+                                }}</td>
+                            <td>
+                                <script type="application/json" class="ch-data">{{ ch._config_dict | tojson }}</script>
+                                <div class="flex gap-1">
+                                    <button class="btn btn-ghost btn-xs" title="编辑"
+                                        @click="openEdit({{ ch.id }}, '{{ ch.name }}', '{{ ch.type }}', $el.closest('td').querySelector('.ch-data').textContent, {{ ch.is_default | tojson }}, {{ ch.enabled | tojson }})">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                    <button class="btn btn-ghost btn-xs text-info" title="测试"
+                                        @click="test({{ ch.id }})">
+                                        <i class="ri-send-plane-line"></i>
+                                    </button>
+                                    <button class="btn btn-ghost btn-xs text-error" title="删除"
+                                        @click="confirmDelete({{ ch.id }}, '{{ ch.name }}')">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-base-content/40">
+                <i class="ri-route-line text-4xl block mb-2"></i>
+                <p>暂无渠道，点击右上角按钮创建</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <dialog class="modal" :class="{ 'modal-open': showModal }">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold mb-4" x-text="editId ? '编辑渠道' : '新建渠道'"></h3>
+
+            <div class="form-control mb-3">
+                <label class="label"><span class="label-text">渠道名称</span></label>
+                <input type="text" x-model="form.name" class="input input-bordered input-sm w-full"
+                    placeholder="如: my-webhook" />
+            </div>
+
+            <div class="form-control mb-3">
+                <label class="label"><span class="label-text">类型</span></label>
+                <select x-model="form.type" class="select select-bordered select-sm w-full" @change="onTypeChange()">
+                    <option value="webhook">Webhook</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="email">Email</option>
+                </select>
+            </div>
+
+            <!-- Webhook Config -->
+            <template x-if="form.type === 'webhook'">
+                <div>
+                    <div class="form-control mb-3">
+                        <label class="label"><span class="label-text">URL</span></label>
+                        <input type="url" x-model="form.config.url" class="input input-bordered input-sm w-full"
+                            placeholder="https://..." />
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Method</span></label>
+                            <select x-model="form.config.method" class="select select-bordered select-sm w-full">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text">Content-Type</span></label>
+                            <select x-model="form.config.content_type" class="select select-bordered select-sm w-full">
+                                <option value="json">JSON</option>
+                                <option value="form">Form</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-control mb-3">
+                        <label class="label">
+                            <span class="label-text">自定义 Headers</span>
+                            <span class="label-text-alt opacity-60">每行一个，格式: Key: Value</span>
+                        </label>
+                        <textarea x-model="form.config.headers_text"
+                            class="textarea textarea-bordered textarea-sm w-full font-mono text-xs" rows="2"
+                            placeholder="Authorization: Bearer xxx"></textarea>
+                    </div>
+                    <div class="form-control mb-3">
+                        <label class="label">
+                            <span class="label-text">自定义 Body</span>
+                            <span class="label-text-alt opacity-60">可用变量: <code>{% raw %}{{title}}{% endraw %}</code>
+                                <code>{% raw %}{{body}}{% endraw %}</code></span>
+                        </label>
+                        <textarea x-model="form.config.body_template"
+                            class="textarea textarea-bordered textarea-sm w-full font-mono text-xs" rows="3"
+                            placeholder='留空则默认: {"title":"...","body":"..."}'></textarea>
+                    </div>
+
+                </div>
+            </template>
+
+            <!-- Telegram Config -->
+            <template x-if="form.type === 'telegram'">
+                <div>
+                    <div class="form-control mb-3">
+                        <label class="label"><span class="label-text">Bot Token</span></label>
+                        <input type="text" x-model="form.config.bot_token" class="input input-bordered input-sm w-full"
+                            placeholder="123456:ABC-..." />
+                    </div>
+                    <div class="form-control mb-3">
+                        <label class="label"><span class="label-text">Chat ID</span></label>
+                        <input type="text" x-model="form.config.chat_id" class="input input-bordered input-sm w-full"
+                            placeholder="-100..." />
+                    </div>
+                </div>
+            </template>
+
+            <!-- Email Config -->
+            <template x-if="form.type === 'email'">
+                <div>
+                    <div class="form-control mb-3">
+                        <label class="label"><span class="label-text">收件邮箱</span></label>
+                        <input type="email" x-model="form.config.to" class="input input-bordered input-sm w-full"
+                            placeholder="user@example.com" />
+                    </div>
+                </div>
+            </template>
+
+            <div class="form-control mb-3">
+                <label class="label cursor-pointer justify-start gap-2">
+                    <input type="checkbox" x-model="form.is_default" class="checkbox checkbox-sm checkbox-primary" />
+                    <span class="label-text">设为默认渠道</span>
+                </label>
+            </div>
+
+            <template x-if="editId">
+                <div class="form-control mb-3">
+                    <label class="label cursor-pointer justify-start gap-2">
+                        <input type="checkbox" x-model="form.enabled" class="checkbox checkbox-sm checkbox-success" />
+                        <span class="label-text">启用</span>
+                    </label>
+                </div>
+            </template>
+
+            <div class="modal-action">
+                <button class="btn btn-sm" @click="showModal = false">取消</button>
+                <button class="btn btn-primary btn-sm" @click="submit()">
+                    <i class="ri-check-line"></i> <span x-text="editId ? '保存' : '创建'"></span>
+                </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop" @click="showModal = false"></form>
+    </dialog>
+
+    <!-- Delete Confirm Modal -->
+    <dialog class="modal" :class="{ 'modal-open': showDeleteModal }">
+        <div class="modal-box max-w-sm">
+            <h3 class="text-lg font-bold text-error mb-2"><i class="ri-error-warning-line"></i> 确认删除</h3>
+            <p class="py-2">确定要删除渠道「<span class="font-bold" x-text="deleteName"></span>」吗？此操作不可撤销。</p>
+            <div class="modal-action">
+                <button class="btn btn-sm" @click="showDeleteModal = false">取消</button>
+                <button class="btn btn-error btn-sm" @click="doDelete()">
+                    <i class="ri-delete-bin-line"></i> 删除
+                </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop" @click="showDeleteModal = false"></form>
+    </dialog>
+</div>
+
+<script>
+    function channelPage() {
+        return {
+            showModal: false,
+            showDeleteModal: false,
+            editId: null,
+            deleteId: null,
+            deleteName: '',
+            form: { name: '', type: 'webhook', config: { url: '', method: 'POST', content_type: 'json', body_template: '', headers_text: '' }, is_default: false, enabled: true },
+
+            onTypeChange() {
+                if (this.form.type === 'webhook') this.form.config = { url: '', method: 'POST', content_type: 'json', body_template: '', headers_text: '' };
+                else if (this.form.type === 'telegram') this.form.config = { bot_token: '', chat_id: '' };
+                else if (this.form.type === 'email') this.form.config = { to: '' };
+            },
+
+            openCreate() {
+                this.editId = null;
+                this.form = { name: '', type: 'webhook', config: { url: '', method: 'POST', content_type: 'json', body_template: '', headers_text: '' }, is_default: false, enabled: true };
+                this.showModal = true;
+            },
+
+            openEdit(id, name, type, configStr, is_default, enabled) {
+                this.editId = id;
+                let cfg = {};
+                try { cfg = typeof configStr === 'string' ? JSON.parse(configStr) : configStr; } catch (e) { }
+                // Convert headers dict to text for editing
+                if (cfg.headers && typeof cfg.headers === 'object') {
+                    cfg.headers_text = Object.entries(cfg.headers).map(([k, v]) => k + ': ' + v).join('\n');
+                } else {
+                    cfg.headers_text = cfg.headers_text || '';
+                }
+                this.form = { name, type, config: cfg, is_default, enabled };
+                this.showModal = true;
+            },
+
+            async submit() {
+                const action = this.editId ? 'update_channel' : 'create_channel';
+                const payload = { ...this.form, config: { ...this.form.config } };
+                // Convert headers_text to dict before sending
+                if (payload.config.headers_text !== undefined) {
+                    const headers = {};
+                    payload.config.headers_text.split('\n').forEach(line => {
+                        const idx = line.indexOf(':');
+                        if (idx > 0) headers[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+                    });
+                    payload.config.headers = Object.keys(headers).length ? headers : undefined;
+                    delete payload.config.headers_text;
+                }
+                if (this.editId) payload.id = this.editId;
+                try {
+                    await Alpine.store('api').call(action, payload);
+                    setTimeout(() => window.location.reload(), 500);
+                } catch (e) { }
+            },
+
+            async test(id) {
+                try {
+                    await Alpine.store('api').call('test_channel', { id });
+                } catch (e) { }
+            },
+
+            confirmDelete(id, name) {
+                this.deleteId = id;
+                this.deleteName = name;
+                this.showDeleteModal = true;
+            },
+
+            async doDelete() {
+                try {
+                    await Alpine.store('api').call('delete_channel', { id: this.deleteId });
+                    this.showDeleteModal = false;
+                    setTimeout(() => window.location.reload(), 500);
+                } catch (e) { }
+            },
+        };
+    }
+</script>
+{% endblock %}

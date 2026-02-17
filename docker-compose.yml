@@ -1,0 +1,18 @@
+services:
+  herald:
+    build: .
+    container_name: herald
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - HERALD_SECRET=changeme       # 管理后台密码（必改）
+      - DATABASE_URL=sqlite:///data/herald.db
+      # --- SMTP (可选) ---
+      # - SMTP_HOST=smtp.example.com
+      # - SMTP_PORT=465
+      # - SMTP_USER=user@example.com
+      # - SMTP_PASSWORD=your_password
+      # - SMTP_FROM=noreply@example.com

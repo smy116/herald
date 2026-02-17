@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="corporate">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Herald — {% block title %}消息聚合网关{% endblock %}</title>
+
+  <!-- Tailwind CSS + DaisyUI -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+
+  <!-- Remix Icon -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4/fonts/remixicon.css" rel="stylesheet" />
+
+  <style>
+    /* Sharper UI: reduce roundness globally */
+    :root {
+      --rounded-box: 0.5rem;
+      --rounded-btn: 0.375rem;
+      --rounded-badge: 0.375rem;
+    }
+
+    .input,
+    .select,
+    .textarea {
+      border-radius: 0.375rem !important;
+    }
+
+    .card {
+      border-radius: 0.5rem !important;
+    }
+
+    .modal-box {
+      border-radius: 0.75rem !important;
+    }
+
+    .badge {
+      border-radius: 0.25rem !important;
+    }
+
+    /* White text on colored buttons */
+    .btn-primary,
+    .btn-error,
+    .btn-success,
+    .btn-warning,
+    .btn-info {
+      color: #fff !important;
+    }
+
+    /* Lighten default buttons for better readability */
+    .btn:not(.btn-primary):not(.btn-error):not(.btn-success):not(.btn-warning):not(.btn-info):not(.btn-ghost):not(.btn-link):not(.btn-outline):not(.btn-active) {
+      background-color: #e5e7eb;
+      border-color: #d1d5db;
+      color: #1f2937;
+    }
+
+    .btn:not(.btn-primary):not(.btn-error):not(.btn-success):not(.btn-warning):not(.btn-info):not(.btn-ghost):not(.btn-link):not(.btn-outline):not(.btn-active):hover {
+      background-color: #d1d5db;
+      border-color: #9ca3af;
+    }
+
+    /* Toast animation */
+    .toast-enter {
+      animation: slideIn .3s ease-out;
+    }
+
+    .toast-exit {
+      animation: slideOut .3s ease-in forwards;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(1rem);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      to {
+        opacity: 0;
+        transform: translateY(1rem);
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-base-200 min-h-screen flex flex-col">
+
+  <!-- ── Navbar ─────────────────────────────────────── -->
+  <div class="navbar bg-base-100 shadow-sm sticky top-0 z-50">
+    <div class="flex-1">
+      <a href="/" class="btn btn-ghost text-xl text-primary gap-1">
+        <i class="ri-radar-fill"></i> Herald
+      </a>
+    </div>
+    <div class="flex-none">
+      <ul class="menu menu-horizontal px-1 gap-1">
+        <li>
+          <a href="/" class="{{ 'active' if request.url.path == '/' else '' }}">
+            <i class="ri-dashboard-3-line"></i> 概览
+          </a>
+        </li>
+        <li>
+          <a href="/channels" class="{{ 'active' if request.url.path == '/channels' else '' }}">
+            <i class="ri-route-line"></i> 渠道
+          </a>
+        </li>
+        <li>
+          <a href="/keys" class="{{ 'active' if request.url.path == '/keys' else '' }}">
+            <i class="ri-key-2-line"></i> 密钥
+          </a>
+        </li>
+        <li>
+          <a href="/logs" class="{{ 'active' if '/logs' in request.url.path else '' }}">
+            <i class="ri-file-list-3-line"></i> 日志
+          </a>
+        </li>
+        <li>
+          <a href="/logout" class="text-error">
+            <i class="ri-logout-box-r-line"></i> 退出
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── Content ────────────────────────────────────── -->
+  <main class="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Toast Container ────────────────────────────── -->
+  <div id="toast-container" class="toast toast-end toast-bottom z-[100]"></div>
+
+  <!-- ── Alpine API Store ───────────────────────────── -->
+  <script src="/static/app.js"></script>
+</body>
+
+</html>
