@@ -19,6 +19,7 @@ from app.schemas import (
     RetryMsgRequest,
 )
 from app.services import dispatch_message
+from app.channels import get_handler, all_types
 
 router = APIRouter(prefix="/api", dependencies=[Depends(require_login)])
 
@@ -27,6 +28,13 @@ router = APIRouter(prefix="/api", dependencies=[Depends(require_login)])
 
 @router.post("/create_channel", response_model=ApiResponse)
 async def create_channel(req: CreateChannelRequest, db: Session = Depends(get_db)):
+    # Validate channel type and config
+    try:
+        handler = get_handler(req.type)
+        handler.validate_config(req.config)
+    except ValueError as e:
+        return ApiResponse(ok=False, msg=str(e))
+
     existing = db.query(Channel).filter(Channel.name == req.name).first()
     if existing:
         return ApiResponse(ok=False, msg=f"渠道名 '{req.name}' 已存在")
@@ -43,6 +51,13 @@ async def create_channel(req: CreateChannelRequest, db: Session = Depends(get_db
 
 @router.post("/update_channel", response_model=ApiResponse)
 async def update_channel(req: UpdateChannelRequest, db: Session = Depends(get_db)):
+    # Validate channel type and config
+    try:
+        handler = get_handler(req.type)
+        handler.validate_config(req.config)
+    except ValueError as e:
+        return ApiResponse(ok=False, msg=str(e))
+
     ch = db.query(Channel).filter(Channel.id == req.id).first()
     if not ch:
         return ApiResponse(ok=False, msg="渠道不存在")
@@ -124,3 +139,19 @@ async def retry_msg(req: RetryMsgRequest, db: Session = Depends(get_db)):
     if new_log.status == "failed":
         return ApiResponse(ok=False, msg=f"重试失败: {new_log.error_msg}")
     return ApiResponse(msg="消息已重新发送")
+
+
+# ── Channel Type Discovery ───────────────────────────────
+
+@router.get("/channel_types")
+async def channel_types():
+    """Return all registered channel types and their config schemas."""
+    types = []
+    for type_name, cls in all_types().items():
+        types.append({
+            "type": cls.type_name,
+            "display_name": cls.display_name,
+            "icon": cls.icon,
+            "config_schema": cls.config_schema,
+        })
+    return ApiResponse(data=types)

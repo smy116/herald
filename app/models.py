@@ -36,5 +36,6 @@ class MessageLog(Base):
     status = Column(String(20), default="pending")  # pending | success | failed
     channel_name = Column(String(100), default="")
     error_msg = Column(Text, default="")
+    retry_count = Column(Integer, default=0)
     api_key_name = Column(String(100), default="")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

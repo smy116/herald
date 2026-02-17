@@ -26,9 +26,31 @@ class Base(DeclarativeBase):
 
 
 def init_db():
-    """Create all tables."""
+    """Create all tables and apply lightweight migrations."""
     from app import models  # noqa: F401 – ensure models are registered
     Base.metadata.create_all(bind=engine)
+
+    # Auto-migrate: add missing columns to existing tables
+    _migrate_add_columns()
+
+
+def _migrate_add_columns():
+    """Add any new columns that don't exist in the current schema."""
+    migrations = [
+        ("message_logs", "retry_count", "INTEGER DEFAULT 0"),
+    ]
+    with engine.connect() as conn:
+        for table, column, col_type in migrations:
+            try:
+                conn.execute(
+                    __import__("sqlalchemy").text(
+                        f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+                    )
+                )
+                conn.commit()
+            except Exception:
+                # Column already exists — ignore
+                conn.rollback()
 
 
 def get_db():
