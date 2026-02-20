@@ -64,9 +64,10 @@
                                         @click="openEdit({{ ch.id }}, '{{ ch.name }}', '{{ ch.type }}', $el.closest('td').querySelector('.ch-data').textContent, {{ ch.is_default | tojson }}, {{ ch.enabled | tojson }})">
                                         <i class="ri-edit-line"></i>
                                     </button>
-                                    <button class="btn btn-ghost btn-xs text-info" title="测试"
-                                        @click="test({{ ch.id }})">
-                                        <i class="ri-send-plane-line"></i>
+                                    <button class="btn btn-ghost btn-xs text-info" title="测试" @click="test({{ ch.id }})"
+                                        :disabled="testingId === {{ ch.id }}">
+                                        <i class="ri-loader-4-line animate-spin" x-show="testingId === {{ ch.id }}"></i>
+                                        <i class="ri-send-plane-line" x-show="testingId !== {{ ch.id }}"></i>
                                     </button>
                                     <button class="btn btn-ghost btn-xs text-error" title="删除"
                                         @click="confirmDelete({{ ch.id }}, '{{ ch.name }}')">
@@ -277,10 +278,19 @@
                 } catch (e) { }
             },
 
+            testingId: null,
+
+            // ... (existing code)
+
             async test(id) {
+                if (this.testingId) return;
+                this.testingId = id;
                 try {
                     await Alpine.store('api').call('test_channel', { id });
-                } catch (e) { }
+                } catch (e) {
+                } finally {
+                    this.testingId = null;
+                }
             },
 
             confirmDelete(id, name) {
