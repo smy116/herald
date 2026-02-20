@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     # --- Core ---
     HERALD_SECRET: str = "changeme"  # Admin login password & cookie signing key
     DATABASE_URL: str = "sqlite:///data/herald.db"
+    RATE_LIMIT_PER_MINUTE: int = 60  # Webhook rate limit per IP or API key
 
     # --- SMTP ---
     SMTP_HOST: str = ""

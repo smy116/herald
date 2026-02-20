@@ -9,6 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import Optional
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.database import get_db, init_db
@@ -18,7 +21,12 @@ from app.auth import require_login, verify_session, create_session_cookie, clear
 from app.services import dispatch_message
 from app.api import router as api_router
 
+# Setup slowapi rate limiter based on client IP
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Herald", docs_url=None, redoc_url=None)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Mount static files & templates
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -141,6 +149,7 @@ async def page_logs(
 # ── Public Webhook Endpoint ──────────────────────────────
 
 @app.post("/send")
+@limiter.limit(f"{settings.RATE_LIMIT_PER_MINUTE}/minute")
 async def webhook_send(
     request: Request,
     db: Session = Depends(get_db),

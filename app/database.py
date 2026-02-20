@@ -52,6 +52,26 @@ def _migrate_add_columns():
                 # Column already exists — ignore
                 conn.rollback()
 
+    # Manual index creation for existing tables
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS ix_channels_name ON channels (name)",
+        "CREATE INDEX IF NOT EXISTS ix_channels_type ON channels (type)",
+        "CREATE INDEX IF NOT EXISTS ix_channels_is_default ON channels (is_default)",
+        "CREATE INDEX IF NOT EXISTS ix_channels_enabled ON channels (enabled)",
+        "CREATE INDEX IF NOT EXISTS ix_api_keys_key ON api_keys (key)",
+        "CREATE INDEX IF NOT EXISTS ix_message_logs_status ON message_logs (status)",
+        "CREATE INDEX IF NOT EXISTS ix_message_logs_channel_name ON message_logs (channel_name)",
+        "CREATE INDEX IF NOT EXISTS ix_message_logs_api_key_name ON message_logs (api_key_name)",
+        "CREATE INDEX IF NOT EXISTS ix_message_logs_created_at ON message_logs (created_at)",
+    ]
+    with engine.connect() as conn:
+        for idx_sql in indexes:
+            try:
+                conn.execute(__import__("sqlalchemy").text(idx_sql))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
 
 def get_db():
     """FastAPI dependency that yields a DB session."""
