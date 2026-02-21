@@ -1,8 +1,9 @@
 services:
   herald:
-    build: .
+    image: ghcr.io/smy116/herald:latest
     container_name: herald
     restart: unless-stopped
+    network_mode: bridge
     ports:
       - "8000:8000"
     volumes:
