@@ -154,12 +154,12 @@ async def webhook_send(
     request: Request,
     db: Session = Depends(get_db),
     key: Optional[str] = Query(None),
-    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
 ):
     # --- Auth ---
     api_key_value = None
-    if authorization and authorization.startswith("Bearer "):
-        api_key_value = authorization[7:].strip()
+    if x_api_key:
+        api_key_value = x_api_key.strip()
     elif key:
         api_key_value = key.strip()
 

@@ -29,4 +29,12 @@ class TelegramHandler(ChannelHandler):
                 url,
                 json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
             )
+            if resp.status_code != 200:
+                error_desc = resp.text
+                try:
+                    error_data = resp.json()
+                    error_desc = error_data.get("description", resp.text)
+                except Exception:
+                    pass
+                raise ValueError(f"Telegram API Error ({resp.status_code}): {error_desc}")
             resp.raise_for_status()
